@@ -7,16 +7,35 @@ var forum = require('./forum');
 var thread = require('./thread');
 var common = require('./common.js')
 
+var arg = process.argv[2];
+
+if(arg == 0) {
+    var connection = mysql.createConnection({
+      host     : '127.0.0.1',
+      user     : 'petrosyan',
+      password : 'root',
+      database: 'forum_db0'
+    });
+    var port = 8081;
+}
+else {
+    var connection = mysql.createConnection({
+      host     : '127.0.0.1',
+      user     : 'petrosyan',
+      password : 'root',
+      database: 'forum_db'
+    });
+    var port = 8080;
+}
+
 //todo use pool connection for better results
-var connection = mysql.createConnection({
-  host     : '127.0.0.1',
-  user     : 'petrosyan',
-  password : 'root',
-  database: 'forum_db'
-});
 
 var app = express();
 app.use(bodyParser.json());
+
+// app.all('*', function(req, res) {
+//     res.send('lol');
+// });
 
 app.post('/db/api/clear/', function(req, res) {
     common.clear(req.body, connection, function(code, response){
@@ -195,4 +214,4 @@ app.post('/db/api/thread/vote', function(req, res) {
     })
 });
 
-app.listen(8080);
+app.listen(port);

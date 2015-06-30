@@ -45,7 +45,7 @@ var create = function (data, connection, callback) {
 
 var details = function (data, connection, callback) {
 	getForumDetails(function(response) {
-		if (data.related.indexOf('user') !== -1) {
+		if (data.related && data.related.indexOf('user') !== -1) {
 				user.getUserDetails( function (userInfo) {
 				response.user = userInfo;
 				callback(0, response);
@@ -114,7 +114,6 @@ var listPosts = function (data, connection, callback) {
 					if(data.related.indexOf('thread') !== -1) {
 						res.forEach( function(item, i, arr) {
 							if(item.thread){
-								console.log(item.thread);
 								asyn.add(function(){
 									thread.getThreadDetails( function (threadInfo) {
 									item.thread = threadInfo;
@@ -188,23 +187,6 @@ var listThreads = function (data, connection, callback) {
 					}
 				});
 
-				// asyn.add(function(){
-				// 	if(data.related.indexOf('thread') !== -1) {
-				// 		res.forEach( function(item, i, arr) {
-				// 			if(item.thread){
-				// 				console.log(item.thread);
-				// 				asyn.add(function(){
-				// 					thread.getThreadDetails( function (threadInfo) {
-				// 					item.thread = threadInfo;
-				// 					asyn.check();
-				// 				}, item.thread, connection)
-				// 				});
-				// 			}
-				// 		})
-				// 	}
-				// });
-				//опять же вложенность
-				// asyn.check();
 				asyn.check();
 				asyn.check();
 				}

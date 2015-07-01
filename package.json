@@ -18,6 +18,7 @@
   "homepage": "https://github.com/Fatkhi/db_project#readme",
   "dependencies": {
     "body-parser": "^1.13.1",
+    "connect-dynamic-middleware": "^0.1.0",
     "express": "^4.13.0",
     "moment": "^2.10.3",
     "mysql": "^2.7.0"

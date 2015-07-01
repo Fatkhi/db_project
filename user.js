@@ -23,79 +23,108 @@ function getUserDetails(callback, email, connection){
     var my_async = new MyAsync(callback);
     my_async.add(function() {
         connection.query('SELECT * FROM `users` WHERE `email` = ?;', email, function (error, results, fields) {
-            if (error) {
+            if(error){
                 console.log(error);
+                my_async.finalCallback = function() {
+                    callback(undefined, 'unknown error');
+                }
+                my_async.check();
             }
-            user = results[0];
-            my_async.data = results[0];
-            //todo thread optimization + check performance
+            else if(results.length === 0) {
+                my_async.finalCallback = function() {
+                    callback(undefined,'error object not found');
+                }
+                my_async.check();
+            }
+            else {
+                user = results[0];
+                my_async.data = results[0];
+                //todo thread optimization + check performance
 
-            my_async.add(function(){
-                list_followers(user['id'], function(answer){
-                    user.followers = answer;
-                    my_async.data.followers = answer;
-                    my_async.check();
-                }, connection);
-            });
-            my_async.add(function(){
-                list_following(user['id'], function(answer){
-                    user.following = answer;
-                    my_async.data.following = answer;
-                    my_async.check();
-                }, connection);
-            });
-            my_async.check();
+                my_async.add(function(){
+                    list_followers(user['email'], function(answer){
+                        user.followers = answer;
+                        my_async.data.followers = answer;
+                        my_async.check();
+                    }, connection);
+                });
+                my_async.add(function(){
+                    list_following(user['email'], function(answer){
+                        user.following = answer;
+                        my_async.data.following = answer;
+                        my_async.check();
+                    }, connection);
+                });
+                my_async.check();
+            }
         })
     });
     my_async.add(
         function(){
             connection.query('SELECT `thread` FROM `users_threads` WHERE `user` = ?;', email, function (error, results, fields) {
-                if (error) {
+                if(error){
                     console.log(error);
+                    my_async.finalCallback = function() {
+                        callback(4, 'unknown error');
+                    }
+                    my_async.check();
                 }
-                var array = [];
-                results.forEach(function (item){
-                    array.push(item.thread);
-                });
-                user.subscriptions = array;
-                my_async.data.subscriptions = array;
-                my_async.check();
+                // else if(results.length === 0) {
+                //     my_async.finalCallback = function() {
+                //         callback(1,'error object not found');
+                //     }
+                //     my_async.check();
+                // }
+                else {
+                    var array = [];
+                    results.forEach(function (item){
+                        array.push(item.thread);
+                    });
+                    if (user) {
+                        user.subscriptions = array;
+                        my_async.data.subscriptions = array;
+                    };
+                    my_async.check();
+                }
             })
         }
     );
 
 }
 
-function list_following (user_id, callback, connection) {
-	connection.query('SELECT `u1`.`email` FROM `users` AS `u1` IGNORE INDEX \
-		(PRIMARY) INNER JOIN `follower_followee` AS `ff` ON `u1`.`id` = `ff`.`followee` WHERE `ff`.`follower` = ?;', user_id,
+function list_following (user_email, callback, connection) {
+	connection.query('SELECT `followee` FROM `follower_followee` WHERE `follower` = ?', user_email,
                       function(error, results, fields) {
                       	if (error) {
                       		console.log(error);
+                            callback(4, 'unknown error');
                       	}
-                          var len = results.length;
-                          var array = new Array(len);
-                          for (var i = 0; i < len; i+=1) {
-                              array[i] = results[i]['email'];
-                          }
-                          callback(array);
+                        // else {
+                            var len = results.length;
+                            var array = new Array(len);
+                            for (var i = 0; i < len; i+=1) {
+                                array[i] = results[i]['followee'];
+                            }
+                            callback(array);
+                        // }
                       });
 }
 
-function list_followers (user_id, callback, connection) {
-	connection.query('SELECT `u1`.`email` FROM `users` AS `u1` IGNORE INDEX (PRIMARY) \
-                      INNER JOIN `follower_followee` AS `ff` ON `u1`.`id` = `ff`.`follower` \
-                      WHERE `ff`.`followee` = ?;', user_id, 
+function list_followers (user_email, callback, connection) {
+	connection.query('SELECT `follower` FROM `follower_followee` WHERE `followee` = ?', user_email, 
                       function(error, results, fields) {
-                      	if (error) {
-                      		console.log(error);
-                      	}
-                          var len = results.length;
-                          var array = new Array(len);
-                          for (var i = 0; i < len; i+=1) {
-                              array[i] = results[i]['email'];
-                          }
-                          callback(array);
+                      	 if (error) {
+                                console.log(error);
+                              callback(4, 'unknown error');
+                            }
+                            // else {
+                                var len = results.length;
+                                var array = new Array(len);
+                                for (var i = 0; i < len; i+=1) {
+                                    array[i] = results[i]['follower'];
+                                }
+                                callback(array);
+                            // }
                       });
 }
 
@@ -110,7 +139,7 @@ var create = function(data, connection, callback){
 	 VALUE (?, ?, ?, ?, ?);', [data.email, data.username, data.name, data.about, data.isAnonymous],
 		function(error, results, fields) {
 			if (error) {
-				//console.log(error);
+				console.log(error);
 				if (error.code === 'ER_DUP_ENTRY') {
 					code = 5;
 					response = 'user already exists';
@@ -133,22 +162,14 @@ var follow = function(data, connection, callback){
 	var follower = data.follower;
 	var followee = data.followee;
 
-	connection.query('INSERT INTO `follower_followee` (`follower`, `followee`)\
-	SELECT `u1`.`id`, `u2`.`id` FROM `users` AS `u1` JOIN `users` AS `u2` \
-	 ON `u1`.`email` = ? AND `u2`.`email` = ?;', [follower, followee],
+	connection.query('INSERT INTO `follower_followee` (`follower`, `followee`) VALUES (?, ?);', [follower, followee],
         function(error, results, fields) {
 			if (error) {
 				console.log(error);
-                if (error.code === 'ER_DUP_ENTRY') {
-                	callback(5, "user already exists")
-                }
 			}
-            else {
                 getUserDetails(function(user) {
                 	callback(0, user);
                 },follower, connection);
-            }
-            //todo error codes everywhere
 		});
 };
 
@@ -156,15 +177,14 @@ var unfollow = function(data, connection, callback) {
     var follower = data.follower;
     var followee = data.followee;
 
-    connection.query('SELECT `u1`.`id` AS `id_1`, `u2`.`id` AS `id_2` FROM `users` AS `u1`' +
-        ' INNER JOIN `users` AS `u2` ON `u1`.`email` = ? AND `u2`.`email` = ?;', [follower, followee],
+    connection.query('DELETE FROM `follower_followee` WHERE `follower` = ? AND `followee` = ?;', [follower, followee],
         function (error, results, fields) {
-            connection.query('DELETE FROM `follower_followee` WHERE `follower` = ? AND `followee` = ?;', [Number(results[0].id_1), Number(results[0].id_2)],
-                function (error, results, fields) {
-                    getUserDetails(function(user) {
-                    	callback(0, user);
-                    },follower, connection);
-                });
+            if (error) {
+                console.log(error);
+            }
+                getUserDetails(function(user) {
+                    callback(0, user);
+                },follower, connection);
     });
 };
 
@@ -200,33 +220,36 @@ var listFollowing = function(data, connection, callback) {
         since_id = '';
     }
     else {
-        since_id = 'AND `u1`.`id` >=' + since_id;
+        since_id = 'AND `users`.`id` >=' + since_id;
     }
 
     if (typeof user == 'undefined') {
     	callback(5, 'user_listFollowing error')
     }
     else {
-        connection.query('SELECT DISTINCT `u1`.* FROM `users` AS `u1`' +
-            'JOIN `follower_followee` AS `ff` ON `u1`.`id` = `ff`.`followee`' +
-            'JOIN `users` AS `u2` ON `ff`.`follower` = `u2`.`id`' +
-            'WHERE `u2`.`email` = ? '+since_id+' ORDER BY `name` '+order+limit, user, function (error, results, fields) {
+        connection.query('SELECT `about`, `email`, `id`, `isAnonymous`, `name`, `username`  FROM `follower_followee` AS `ff` '+
+'JOIN `users` ON `users`.`email` = `ff`.`followee` WHERE `ff`.follower = ? '+since_id+' ORDER BY `name` '+order+limit, user, function (error, results, fields) {
             if(error){
                 console.log(error);
+                callback(4, 'unknown error');
             }
-            var len = results.length;
-            var response = [];
-            var asyn = new MyAsync(function(){
-            	callback(0, response);
-            });
-            for (var i = 0; i < len; i+=1) {
-                var func = function (user) {
-                    response.push(user);
-                    asyn.check();
-                }
-                asyn.add(function(){
-                    getUserDetails(func, results[i].email, connection);
+            else if(results.length === 0) callback(0,results);
+            else {
+                console.log(results);
+                var len = results.length;
+                var response = [];
+                var asyn = new MyAsync(function(){
+                    callback(0, response);
                 });
+                for (var i = 0; i < len; i+=1) {
+                    var func = function (user) {
+                        response.push(user);
+                        asyn.check();
+                    }
+                    asyn.add(function(){
+                        getUserDetails(func, results[i].email, connection);
+                    });
+                }
             }
         })
     }
@@ -251,33 +274,36 @@ var listFollowers = function(data, connection, callback) {
         since_id = '';
     }
     else {
-        since_id = 'AND `u1`.`id` >=' + since_id;
+        since_id = 'AND `users`.`id` >=' + since_id;
     }
 
     if (typeof user == 'undefined') {
     	callback(5, 'user_listFollowers error')
     }
     else {
-        connection.query('SELECT DISTINCT `u1`.* FROM `users` AS `u1`' +
-            'JOIN `follower_followee` AS `ff` ON `u1`.`id` = `ff`.`follower`' +
-            'JOIN `users` AS `u2` ON `ff`.`followee` = `u2`.`id`' +
-            'WHERE `u2`.`email` = ? '+since_id+' ORDER BY `name` '+order+limit, user, function (error, results, fields) {
+        connection.query('SELECT `about`, `email`, `id`, `isAnonymous`, `name`, `username`  FROM `follower_followee` AS `ff` '+
+            'JOIN `users` ON `users`.`email` = `ff`.`follower` '+
+            'WHERE `ff`.followee = ? '+since_id+' ORDER BY `name` '+order+limit, user, function (error, results, fields) {
             if(error){
                 console.log(error);
+                callback(4, 'unknown error');
             }
-            var len = results.length;
-            var response = [];
-            var asyn = new MyAsync(function(){
-            	callback(0, response);
-            });
-            for (var i = 0; i < len; i+=1) {
-                var func = function (user) {
-                    response.push(user);
-                    asyn.check();
-                }
-                asyn.add(function(){
-                    getUserDetails(func, results[i].email, connection);
+            else if(results.length === 0) callback(0, results);
+            else {
+                var len = results.length;
+                var response = [];
+                var asyn = new MyAsync(function(){
+                    callback(0, response);
                 });
+                for (var i = 0; i < len; i+=1) {
+                    var func = function (user) {
+                        response.push(user);
+                        asyn.check();
+                    }
+                    asyn.add(function(){
+                        getUserDetails(func, results[i].email, connection);
+                    });
+                }
             }
         })
     }
@@ -294,7 +320,12 @@ var details = function(data, connection, callback) {
     }
     else {
         getUserDetails(function(user) {
-        	callback(0, user);
+            if (user === undefined) {
+                callback(4, 'error');
+            }
+            else {
+                callback(0, user);
+            }
         },email, connection);
     }
 }

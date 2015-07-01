@@ -1,19 +1,19 @@
 DROP TABLE IF EXISTS users;
 CREATE TABLE users (
   id          INT AUTO_INCREMENT  NOT NULL,
-  email       CHAR(25) UNIQUE     NOT NULL,
-  username    CHAR(25),
-  name        CHAR(25),
+  email       CHAR(45) UNIQUE     NOT NULL,
+  username    CHAR(45),
+  name        CHAR(45),
   about       TEXT,
   isAnonymous BOOL DEFAULT FALSE  NOT NULL,
   PRIMARY KEY (id),
-  KEY id_email (id, email)
+  KEY name_email (name, email)
 );
 
 DROP TABLE IF EXISTS follower_followee;
 CREATE TABLE follower_followee (
-  follower INT NOT NULL,
-  followee INT NOT NULL,
+  follower CHAR(45) NOT NULL,
+  followee CHAR(45) NOT NULL,
   PRIMARY KEY (follower, followee),
   KEY f_f (followee, follower)
 );
@@ -21,11 +21,11 @@ CREATE TABLE follower_followee (
 DROP TABLE IF EXISTS forums;
 CREATE TABLE forums (
   id         INT AUTO_INCREMENT NOT NULL,
-  name       CHAR(35)       NOT NULL UNIQUE,
-  short_name CHAR(35)       NOT NULL UNIQUE,
-  user       CHAR(25)       NOT NULL,
+  name       CHAR(45)       NOT NULL UNIQUE,
+  short_name CHAR(45)       NOT NULL UNIQUE,
+  user       CHAR(45)       NOT NULL,
   PRIMARY KEY (id),
-  KEY (short_name)
+  KEY (short_name, user, id, name)
 );
 
 DROP TABLE IF EXISTS threads;
@@ -33,8 +33,8 @@ CREATE TABLE threads (
   id        INT AUTO_INCREMENT NOT NULL,
   title     CHAR(50)       NOT NULL,
   slug      CHAR(50)       NOT NULL,
-  forum     CHAR(35)       NOT NULL,
-  user      CHAR(25)       NOT NULL,
+  forum     CHAR(45)       NOT NULL,
+  user      CHAR(45)       NOT NULL,
   posts     INT DEFAULT 0      NOT NULL,
   likes     INT DEFAULT 0      NOT NULL,
   dislikes  INT DEFAULT 0      NOT NULL,
@@ -52,8 +52,8 @@ DROP TABLE IF EXISTS posts;
 CREATE TABLE posts (
   id            INT AUTO_INCREMENT NOT NULL,
   message       TEXT               NOT NULL,
-  forum         CHAR(35)           NOT NULL,
-  user          CHAR(25)           NOT NULL,
+  forum         CHAR(45)           NOT NULL,
+  user          CHAR(45)           NOT NULL,
   parent        INT DEFAULT NULL,
   thread        INT                NOT NULL,
   likes         INT DEFAULT 0      NOT NULL,
@@ -67,13 +67,14 @@ CREATE TABLE posts (
   date          DATETIME           NOT NULL,
   PRIMARY KEY (id),
   KEY user_date (user, date),
+  KEY user_forum (user, forum),
   KEY forum_date (forum, date),
   KEY thread_date (thread, date)
 );
 
 DROP TABLE IF EXISTS users_threads;
 CREATE TABLE users_threads (
-  user   CHAR(25) NOT NULL,
+  user   CHAR(45) NOT NULL,
   thread INT          NOT NULL,
   PRIMARY KEY (user, thread)
 );

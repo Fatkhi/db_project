@@ -22,12 +22,18 @@ function MyAsync(finalCallback) {
 
 function getThreadDetails (callback, id, connection) {
 	connection.query('SELECT * FROM `threads` WHERE `id` = ?;', id, function (error, results, fields) {
-		var res = results[0];
-		if(res !== undefined) {
-			res.date = moment(res.date).format("YYYY-MM-DD HH:mm:ss");
+		if(error){
+		    console.log(error);
+		    callback(undefined, 'unknown error');
 		}
-		if(error) console.log(error);
-		else callback(res);
+		else if(results.length === 0) {
+		    callback(undefined,'error object not found');
+		}
+		else {
+			var res = results[0];
+			res.date = moment(res.date).format("YYYY-MM-DD HH:mm:ss");
+			callback(res);
+		}
 	})
 }
 
@@ -37,7 +43,11 @@ var create = function (data, connection, callback) {
 		'VALUE (?, ?, ?, ?, ?, ?, ?, ?);', [data.isDeleted, data.forum, data.title, data.isClosed, data.user, data.date,
 		data.message, data.slug],
 		function (error, results, fields) {
-			if(error) console.log(error);
+			console.log(results);
+			if(error) {
+				console.log(error);
+				callback(4,'unknow error');
+			}
 			else {
 				data.id = results.insertId;
 				callback(0, data);
@@ -49,9 +59,7 @@ var close = function (data, connection, callback) {
 	connection.query('UPDATE `threads` SET `isClosed` = TRUE WHERE `id` = ?;', data.thread,
 		function (error, results, fields) {
 			if(error) console.log(error);
-			else {
 				callback(0, data);
-			}
 		})
 }
 
@@ -59,9 +67,7 @@ var open = function (data, connection, callback) {
 	connection.query('UPDATE `threads` SET `isClosed` = FALSE WHERE `id` = ?;', data.thread,
 		function (error, results, fields) {
 			if(error) console.log(error);
-			else {
 				callback(0, data);
-			}
 		})
 }
 
@@ -72,9 +78,6 @@ var details = function (data, connection, callback) {
 		}
 		else {
 			var res = results;
-			// if(res[0] !== undefined) {
-			// 	res.date = res.date.toLocaleString();
-			// }
 
 			if (data.related) {
 				if(data.related.indexOf('thread') !== -1) {
@@ -90,60 +93,39 @@ var details = function (data, connection, callback) {
 
 							asyn.add(function(){
 								user.getUserDetails( function (userInfo) {
-								res.user = userInfo;
-								asyn.check();
+									if (userInfo !== undefined) {
+										res.user = userInfo;
+									}
+									else {
+										asyn.finalCallback = function(){
+											callback(4,'unknown error');
+										}
+									}
+									asyn.check();
 							}, res.user, connection)
 							});
-
-
-							// res.forEach( function(item, i, arr) {
-							// 	if(item.user){
-							// 		asyn.add(function(){
-							// 			user.getUserDetails( function (userInfo) {
-							// 			item.user = userInfo;
-							// 			asyn.check();
-							// 		}, item.user, connection)
-							// 		});
-							// 	}
-							// })
-
-
 						}
-					});
-
-					//нужно ли рассмативать вложенных юзеров?
-
-					asyn.add(function(){
 						if(data.related.indexOf('forum') !== -1) {
 
 							asyn.add(function(){
 								forum.getForumDetails( function (forumInfo) {
-								res.forum = forumInfo;
-								asyn.check();
+									if (forumInfo !== undefined) {
+										res.forum = forumInfo;
+									}
+									else {
+										asyn.finalCallback = function(){
+											callback(4,'unknown error');
+										}
+									}
+									asyn.check();
 							}, res.forum, connection)
 							});
-
-
-							// res.forEach( function(item, i, arr) {
-							// 	if(item.forum){
-							// 		asyn.add(function(){
-							// 			getForumDetails( function (forumInfo) {
-							// 			item.forum = forumInfo;
-							// 			asyn.check();
-							// 		}, item.forum, connection)
-							// 		});
-							// 	}
-							// })
-
-
 						}
 					});
 
 					asyn.check();
-					asyn.check();
 
 				}
-				
 			}
 			else callback(0, res);
 		}

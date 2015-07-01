@@ -28,7 +28,7 @@ function getPostDetails (callback, id, connection) {
 			res.date = moment(res.date).format("YYYY-MM-DD HH:mm:ss");
 		}
 		if(error) console.log(error);
-		else callback(res);
+		callback(res);
 	})
 }
 
@@ -96,6 +96,7 @@ var details = function(data, connection, callback) {
 						});
 						asyn.add(function(){
 							thread.getThreadDetails( function (threadInfo) {
+								//if undefined
 							res.thread = threadInfo;
 							asyn.check();
 						}, res.thread, connection)

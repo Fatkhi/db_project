@@ -22,9 +22,17 @@ function MyAsync(finalCallback) {
 
 var getForumDetails = function (callback, short_name, connection) {
 	connection.query('SELECT * FROM `forums` WHERE `short_name` = ?;', short_name, function (error, results, fields) {
-		var res = results[0];
-		if(error) console.log(error);
-		callback(res);
+		if(error){
+		    console.log(error);
+		    callback(undefined, 'unknown error');
+		}
+		// else if(results.length === 0) {
+		//     callback(undefined,'error object not found');
+		// }
+		else {
+			var res = results[0];
+			callback(res);
+		}
 	})
 
 
@@ -33,12 +41,12 @@ var getForumDetails = function (callback, short_name, connection) {
 var create = function (data, connection, callback) {
 	connection.query('INSERT INTO `forums` (`name`, `short_name`, `user`) VALUE (?, ?, ?);', [data.name, data.short_name, data.user],
 		function (error, results, fields) {
-			if(error) console.log(error);
-			else {
+			if(error) {
+				console.log(error);
+			}
 				getForumDetails(function(response) {
 					callback(0, response);
 				}, data.short_name, connection);
-			}
 
 		})
 }

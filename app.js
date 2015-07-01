@@ -27,6 +27,7 @@ else if (arg == 1) {
       password : 'root',
       database: 'forum_db_prod'
     });
+    bodyParse.initialize();
     var port = 8000;
 }
 else {

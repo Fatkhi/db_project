@@ -1,6 +1,5 @@
 var express = require('express');
 var bodyParser = require('body-parser');
-var cdm = require('connect-dynamic-middleware');
 var bodyParse = require('./node_modules/parser.js');
 var mysql = require('mysql');
 var user = require('./user');
